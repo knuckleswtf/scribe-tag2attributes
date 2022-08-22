@@ -14,37 +14,42 @@ class Extractor
 {
     use FindsFormRequestForMethod;
 
+    protected array $tags = [];
+
     public function __construct(public DocumentationConfig $config)
     {
     }
 
     public function processRoute(Route $route, ReflectionFunctionAbstract $method, ?ReflectionClass $controller): array
     {
-        $tags = [];
         if ($formRequestClass = $this->getFormRequestReflectionClass($method)) {
-            $tagsFromFormRequest = $this->parseData(new DocBlock($formRequestClass->getDocComment()));
-            $tags[$formRequestClass] = $tagsFromFormRequest;
+            if (!isset($this->tags[$formRequestClass->name])) {
+                $tagsFromFormRequest = $this->parseData(new DocBlock($formRequestClass->getDocComment()), 'formrequest');
+                $this->tags[$formRequestClass->getFileName()] = $tagsFromFormRequest;
+            }
         }
 
-        $tags[$controller->name] ??= $this->parseData(RouteDocBlocker::getDocBlocksFromRoute($route)['class']);
+        if ($controller->name === "Closure") {
+            $this->tags[$method->getFileName() . '|' . $method->getStartLine()] ??= $this->parseData(RouteDocBlocker::getDocBlocksFromRoute($route)['method'], 'method');
+        } else {
+            $this->tags[$controller->getFileName()] ??= $this->parseData(RouteDocBlocker::getDocBlocksFromRoute($route)['class'], 'class');
 
-        $tags[$controller->name.'/'.$method->name] ??= $this->parseData(RouteDocBlocker::getDocBlocksFromRoute($route)['method']);
+            $this->tags[$controller->getFileName() . '|' . $method->name] ??= $this->parseData(RouteDocBlocker::getDocBlocksFromRoute($route)['method'], 'method');
+        }
 
-        return $tags;
+        return $this->tags;
     }
 
-    protected function parseData(DocBlock $docblock)
+    protected function parseData(DocBlock $docblock, string $scope)
     {
         /** @var \Mpociot\Reflection\DocBlock\Tag[] $tags */
         $tags = $docblock->getTags() ?? [];
 
-        $parsed = [];
-        foreach ($tags as $tag) {
-            $parsed[] = match(strtolower($tag->getName())) {
-                'bodyparam' => $tag->getContent()
-            };
-        }
+        $parsed = collect($tags)
+            ->map(fn($tag) => TagParser::parse($tag, $tags, $scope, $docblock))
+            ->flatten(1);
 
+        if ($parsed->count()) ray($parsed->all());
         return $parsed;
     }
 }

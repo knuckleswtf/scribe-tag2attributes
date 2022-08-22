@@ -71,7 +71,7 @@ class Process extends Command
                 $controller = new ReflectionClass($controllerName);
                 $method = u::getReflectedRouteMethod([$controllerName, $methodName]);
                 $endpointData = $extractor->processRoute($route, $method, $controller);
-                ray($endpointData);
+
                 c::success('Processed route: ' . c::getRouteRepresentation($route));
             } catch (\Exception $exception) {
                 $this->encounteredErrors = true;
