@@ -1,0 +1,5 @@
+{
+  "require": {
+    "knuckleswtf/scribe": "v4.x-dev"
+  }
+}
