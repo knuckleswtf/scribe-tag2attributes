@@ -1,5 +1,34 @@
 {
+  "name": "knuckleswtf/scribe-docblock2attributes",
+  "license": "MIT",
+  "description": "Automatically convert Scribe v3 docblock annotations to PHP 8 attributes",
+  "keywords": [
+    "API",
+    "documentation",
+    "laravel",
+    "dingo"
+  ],
+  "homepage": "http://github.com/knuckleswtf/scribe-docblock2attributes",
+  "authors": [
+    {
+      "name": "Shalvah",
+      "email": "hello@shalvah.me"
+    }
+  ],
   "require": {
+    "php": ">=8.0",
     "knuckleswtf/scribe": "v4.x-dev"
+  },
+  "autoload": {
+    "psr-4": {
+      "Knuckles\\Scribe\\Docblock2Attributes\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Knuckles\\Scribe\\Docblock2Attributes\\ServiceProvider"
+      ]
+    }
   }
 }
