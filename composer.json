@@ -1,6 +1,7 @@
 {
   "name": "knuckleswtf/scribe-tags2attributes",
   "license": "MIT",
+  "version": "0.1.0",
   "description": "Automatically convert most Scribe v3 docblock tags to v4 PHP 8 attributes",
   "keywords": [
     "API",
