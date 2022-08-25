@@ -12,22 +12,16 @@ class SubgroupTagParser
 {
     use ParamHelpers;
 
-    public function __construct(protected string $tagContent, protected array $allTags, protected Tag $tag)
+    public function __construct(protected string $tagContent, protected array $allTags)
     {
     }
 
     public function parse()
     {
-        $descTag = Arr::first(Utils::filterDocBlockTags($this->allTags, 'subgroupdescription'));
+        $descTag = Arr::first(array_values(
+            array_filter($this->allTags, fn($tag) => strtolower($tag->name) == '@subgroupdescription'))
+        );
 
-        return [
-            [
-                'type' => 'subgroup',
-                'data' => [
-                    'name' => $this->tagContent,
-                    'description' => trim($descTag?->getContent()),
-                ]
-            ],
-        ];
+        return [$this->tagContent, $descTag?->value ? trim($descTag->value) : null];
     }
 }

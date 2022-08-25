@@ -44,11 +44,6 @@ class BodyParamTagParser
             $example = 'No-example';
         }
 
-        return [
-            [
-                'type' => 'bodyparam',
-                'data' => compact('name', 'type', 'description', 'required', 'example'),
-            ],
-        ];
+        return [$name, $type, ...compact('description', 'required', 'example')];
     }
 }

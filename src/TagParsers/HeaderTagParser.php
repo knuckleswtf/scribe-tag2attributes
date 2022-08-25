@@ -22,10 +22,7 @@ class HeaderTagParser
         return [
             [
                 'type' => 'header',
-                'data' => [
-                    'name' => $name,
-                    'example' => $example,
-                ],
+                'data' => [ $name, $example, ],
             ],
         ];
     }

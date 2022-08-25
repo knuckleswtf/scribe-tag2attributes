@@ -12,54 +12,65 @@ class TransformerTagParser
 {
     use ParamHelpers;
 
-    public function __construct(protected string $tagContent, protected array $allTags, protected Tag $tag)
+    public function __construct(protected string $tagContent, protected array $allTags, protected $isCollection = false, )
     {
     }
 
     public function parse()
     {
-        [$statusCode, $transformerClass, $isCollection] = $this->getStatusCodeAndTransformerClass();
+        [$statusCode, $transformerClass] = $this->getStatusCodeAndTransformerClass();
         [$model, $factoryStates, $relations, $resourceKey] = $this->getClassToBeTransformed();
         $pagination = $this->getTransformerPaginatorData();
 
-        return [
-            [
-                'type' => 'transformer',
-                'data' => [
-                    'status' => (int)$statusCode,
-                    'description' => '',
-                    'name' => $transformerClass,
-                    'model' => $model,
-                    'collection' => $isCollection,
-                    'factoryStates' => $factoryStates,
-                    'with' => $relations,
-                    'resourceKey' => $resourceKey,
-                    'pagination' => $pagination,
-                ],
-            ],
+        if (!empty($attributes['scenario'])) {
+            $description = (!empty($status) ? "$status, {$attributes['scenario']}" : $attributes['scenario']);
+        } else {
+            $description = null;
+        }
+
+        $data = [
+            $transformerClass,
+            $model
         ];
+
+        if (!empty($statusCode)) {
+            $data[] = (int) $statusCode;
+        }
+
+        if ($this->isCollection) {
+            $data['collection'] = true;
+        }
+
+        $data['description'] = $description;
+        $data['factoryStates'] = $factoryStates ?: null;
+        $data['with'] = $relations ?: null;
+
+        $data['resourceKey'] = $resourceKey;
+        $data['paginate'] = $pagination;
+        return $data;
     }
 
     private function getStatusCodeAndTransformerClass(): array
     {
         preg_match('/^(\d{3})?\s?([\s\S]*)$/', $this->tagContent, $result);
-        $status = (int)($result[1] ?: 200);
+        $status = $result[1] ?: null;
         $transformerClass = $result[2];
-        $isCollection = strtolower($this->tag->getName()) == 'transformercollection';
 
-        return [$status, $transformerClass, $isCollection];
+        return [$status, $transformerClass];
     }
 
     private function getClassToBeTransformed(): array
     {
-        $modelTag = Arr::first(Utils::filterDocBlockTags($this->allTags, 'transformermodel'));
+        $modelTag = Arr::first(array_values(
+            array_filter($this->allTags, fn($tag) => strtolower($tag->name) == '@transformermodel'))
+        );
 
         $type = null;
         $states = [];
         $relations = [];
         $resourceKey = null;
         if ($modelTag) {
-            ['content' => $type, 'attributes' => $attributes] = a::parseIntoContentAndAttributes($modelTag->getContent(), ['states', 'with', 'resourceKey']);
+            ['content' => $type, 'attributes' => $attributes] = a::parseIntoContentAndAttributes($modelTag->value, ['states', 'with', 'resourceKey']);
             $states = $attributes['states'] ? explode(',', $attributes['states']) : [];
             $relations = $attributes['with'] ? explode(',', $attributes['with']) : [];
             $resourceKey = $attributes['resourceKey'] ?? null;
@@ -73,17 +84,22 @@ class TransformerTagParser
         return [$type, $states, $relations, $resourceKey];
     }
 
-    private function getTransformerPaginatorData(): array
+    private function getTransformerPaginatorData()
     {
-        $tag = Arr::first(Utils::filterDocBlockTags($this->allTags, 'transformerpaginator'));
+        $tag = Arr::first(array_values(
+            array_filter($this->allTags, fn($tag) => strtolower($tag->name) == '@transformerpaginator'))
+        );
+
         if (empty($tag)) {
-            return ['adapter' => null, 'perPage' => null];
+            return null;
         }
 
-        preg_match('/^\s*(.+?)\s+(\d+)?$/', $tag->getContent(), $result);
+        preg_match('/^\s*(.+?)(\s+\d+)?$/', $tag->value, $result);
         $paginatorAdapter = $result[1];
         $perPage = $result[2] ?? null;
 
-        return ['adapter' => $paginatorAdapter, 'perPage' => $perPage];
+        $data = [$paginatorAdapter];
+        if (($perPage = trim($perPage))) $data[] = $perPage;
+        return $data;
     }
 }

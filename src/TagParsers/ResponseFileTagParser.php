@@ -21,19 +21,28 @@ class ResponseFileTagParser
 
         ['attributes' => $attributes, 'content' => $path] = a::parseIntoContentAndAttributes($mainContent, ['status', 'scenario']);
 
-        $status = $attributes['status'] ?: ($status ?: 200);
-        $description = $attributes['scenario'] ? "$status, {$attributes['scenario']}" : "";
+        $status = $attributes['status'] ?: $status;
+        if ($status === '') $status = null;
+        if (!empty($attributes['scenario'])) {
+            $description = (!empty($status) ? "$status, {$attributes['scenario']}" : $attributes['scenario']);
+        } else {
+            $description = null;
+        }
+
+        if ($status === null) {
+            return [
+                $path,
+                'merge' => $merge,
+                'description' => $description,
+            ];
+        }
 
         return [
-            [
-                'type' => 'response',
-                'data' => [
-                    'path' => $path,
-                    'merge' => $merge,
-                    'status' => (int) $status,
-                    'description' => $description
-                ],
-            ],
+            $path,
+            'status' => (int) $status,
+            'merge' => $merge,
+            'description' => $description,
         ];
+
     }
 }

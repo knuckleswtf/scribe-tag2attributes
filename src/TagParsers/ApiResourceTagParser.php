@@ -12,13 +12,13 @@ class ApiResourceTagParser
 {
     use ParamHelpers;
 
-    public function __construct(protected string $tagContent, protected array $allTags, protected Tag $tag)
+    public function __construct(protected string $tagContent, protected array $allTags, protected $isCollection = false, )
     {
     }
 
     public function parse()
     {
-        [$statusCode, $description, $apiResourceClass, $isCollection] = $this->getStatusCodeAndApiResourceClass();
+        [$statusCode, $description, $apiResourceClass] = $this->getStatusCodeAndApiResourceClass();
         [$modelClass, $factoryStates, $relations, $pagination] = $this->getClassToBeTransformedAndAttributes();
         $additionalData = $this->getAdditionalData();
 
@@ -33,45 +33,53 @@ class ApiResourceTagParser
             }
         }
 
-        return [
-            [
-                'type' => 'apiresource',
-                'data' => [
-                    'status' => (int)$statusCode,
-                    'description' => $description,
-                    'name' => $apiResourceClass,
-                    'model' => $modelClass,
-                    'collection' => $isCollection,
-                    'factoryStates' => $factoryStates,
-                    'with' => $relations,
-                    'additionalData' => $additionalData,
-                    'paginate' => $paginate,
-                    'simplePaginate' => $simplePaginate,
-                ],
-            ],
+        $data = [
+            $apiResourceClass,
+            $modelClass,
         ];
+
+        if (!empty($statusCode)) {
+            $data[] = (int)$statusCode;
+        }
+
+        if ($this->isCollection) {
+            $data['collection'] = true;
+        }
+
+        $data['description'] = $description;
+        $data['factoryStates'] = $factoryStates ?: null;
+        $data['with'] = $relations ?: null;
+        $data['additionalData'] = $additionalData ?: null;
+        $data['paginate'] = $paginate;
+        $data['simplePaginate'] = $simplePaginate;
+        return $data;
     }
 
     private function getStatusCodeAndApiResourceClass(): array
     {
         preg_match('/^(\d{3})?\s?([\s\S]*)$/', $this->tagContent, $result);
 
-        $status = $result[1] ?: 200;
+        $status = $result[1] ?: null;
         $content = $result[2];
 
         ['attributes' => $attributes, 'content' => $content] = a::parseIntoContentAndAttributes($content, ['status', 'scenario']);
 
         $status = $attributes['status'] ?: $status;
         $apiResourceClass = $content;
-        $description = ($status && $attributes['scenario']) ? "$status, {$attributes['scenario']}" : "";
+        if (!empty($attributes['scenario'])) {
+            $description = (!empty($status) ? "$status, {$attributes['scenario']}" : $attributes['scenario']);
+        } else {
+            $description = null;
+        }
 
-        $isCollection = strtolower($this->tag->getName()) == 'apiresourcecollection';
-        return [(int)$status, $description, $apiResourceClass, $isCollection];
+        return [$status, $description, $apiResourceClass];
     }
 
     private function getClassToBeTransformedAndAttributes(): array
     {
-        $modelTag = Arr::first(Utils::filterDocBlockTags($this->allTags, 'apiresourcemodel'));
+        $modelTag = Arr::first(array_values(
+            array_filter($this->allTags, fn($tag) => strtolower($tag->name) == '@apiresourcemodel'))
+        );
 
         $modelClass = null;
         $states = [];
@@ -79,7 +87,7 @@ class ApiResourceTagParser
         $pagination = [];
 
         if ($modelTag) {
-            ['content' => $modelClass, 'attributes' => $attributes] = a::parseIntoContentAndAttributes($modelTag->getContent(), ['states', 'with', 'paginate']);
+            ['content' => $modelClass, 'attributes' => $attributes] = a::parseIntoContentAndAttributes($modelTag->value, ['states', 'with', 'paginate']);
             $states = $attributes['states'] ? explode(',', $attributes['states']) : [];
             $relations = $attributes['with'] ? explode(',', $attributes['with']) : [];
             $pagination = $attributes['paginate'] ? explode(',', $attributes['paginate']) : [];
@@ -88,9 +96,11 @@ class ApiResourceTagParser
         return [$modelClass, $states, $relations, $pagination];
     }
 
-    private function getAdditionalData(): array
+    private function getAdditionalData()
     {
-        $tag = Arr::first(Utils::filterDocBlockTags($this->allTags, 'apiresourceadditional'));
-        return $tag ? a::parseIntoAttributes($tag->getContent()) : [];
+        $tag = Arr::first(array_values(
+            array_filter($this->allTags, fn($tag) => strtolower($tag->name) == '@apiresourceadditional'))
+        );
+        return $tag ? a::parseIntoAttributes($tag->value) : null;
     }
 }

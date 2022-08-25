@@ -54,11 +54,6 @@ class UrlParamTagParser
             $example = 'No-example';
         }
 
-        return [
-            [
-                'type' => 'urlparam',
-                'data' => compact('name', 'type', 'description', 'required', 'example'),
-            ],
-        ];
+        return [$name, ...compact('type', 'description', 'required', 'example')];
     }
 }

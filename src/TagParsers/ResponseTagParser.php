@@ -18,23 +18,31 @@ class ResponseTagParser
         // Status code (optional) followed by response
         preg_match('/^(\d{3})?\s?([\s\S]*)$/', $this->tagContent, $result);
 
-        $status = $result[1] ?: 200;
+        $status = $result[1] ?: null;
         $content = $result[2] ?: '';
 
         ['attributes' => $attributes, 'content' => $content] = a::parseIntoContentAndAttributes($content, ['status', 'scenario']);
 
         $status = $attributes['status'] ?: $status;
-        $description = $attributes['scenario'] ? "$status, {$attributes['scenario']}" : '';
+        if (!empty($attributes['scenario'])) {
+            $description = (!empty($status) ? "$status, {$attributes['scenario']}" : $attributes['scenario']);
+        } else {
+            $description = null;
+        }
+
+        if ($content == null || $content == '') {
+            return ['status' => $status ? (int) $status : null, 'description' => $description];
+        }
+
+        if ($status === null) {
+            return [
+                $content,
+                'description' => $description,
+            ];
+        }
 
         return [
-            [
-                'type' => 'response',
-                'data' => [
-                    'content' => $content,
-                    'status' => (int) $status,
-                    'description' => $description
-                ],
-            ],
+            $content, (int) $status, $description,
         ];
     }
 }

@@ -70,11 +70,6 @@ class QueryParamTagParser
             $example = 'No-example';
         }
 
-        return [
-            [
-                'type' => 'queryparam',
-                'data' => compact('name', 'type', 'description', 'required', 'example'),
-            ],
-        ];
+        return [$name, ...compact('type', 'description', 'required', 'example')];
     }
 }

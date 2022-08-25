@@ -29,22 +29,22 @@ class ResponseFieldTagParser
             $description = trim($description);
         }
 
-        $type = static::normalizeTypeName($type);
-        $data = compact('name', 'type', 'description');
+        $type = static::normalizeTypeName(trim($type));
+        $data = compact('type', 'description');
 
         // Support optional type in annotation
         // The type can also be a union or nullable type (eg ?string or string|null)
-        if (!$this->isSupportedTypeInDocBlocks(explode('|', trim($type, '?'))[0])) {
+        if (!empty($type) && !$this->isSupportedTypeInDocBlocks(explode('|', trim($type, '?'))[0])) {
             // Then that wasn't a type, but part of the description
             $data['description'] = trim("$type $description");
             $data['type'] = null;
+            return [$name,'description' => $data['description']];
         }
 
-        return [
-            [
-                'type' => 'responsefield',
-                'data' => $data,
-            ],
-        ];
+        if (empty($data['type']) && empty($data['description'])) {
+            return [$name];
+        }
+
+        return [$name, $data['type'], $data['description']];
     }
 }
