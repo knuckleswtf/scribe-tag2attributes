@@ -42,6 +42,8 @@ Example:
   public function doSomething()
 ```
 
+> Note that this rule will only work on methods in classes. Unfortunately, attributes can't be added to inline (closure) routes in a neat way.
+
 ## Usage
 - Make sure the minimum PHP version in your `composer.json` is 8.0 (ie you should have `"php": ">= 8.0"` or similar in your `"require"` section).
 - Install this package
