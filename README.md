@@ -17,6 +17,8 @@ This package will smartly transform the following tags to their attribute equiva
 
 It won't transform `@group` tags or endpoint titles and descriptions (because they can look ugly as attributes).
 
+It will only work on methods in classes. Unfortunately, attributes can't be added to inline (closure) routes in a neat way.
+
 Example:
 
 ```diff
@@ -41,11 +43,6 @@ Example:
 + #[ResponseFromFile('responses/not_found.json', status: 404, merge: '{"resource": "user"}', description: '404, User not found')]
   public function doSomething()
 ```
-
-
-> Note
-> 
-> This rule will only work on methods in classes. Unfortunately, attributes can't be added to inline (closure) routes in a neat way.
 
 ## Usage
 - Make sure the minimum PHP version in your `composer.json` is 8.0 (ie you should have `"php": ">= 8.0"` or similar in your `"require"` section).
