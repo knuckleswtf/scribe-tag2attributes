@@ -44,6 +44,7 @@ Example:
 
 
 > Note
+> 
 > This rule will only work on methods in classes. Unfortunately, attributes can't be added to inline (closure) routes in a neat way.
 
 ## Usage
