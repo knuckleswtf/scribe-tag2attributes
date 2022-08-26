@@ -81,5 +81,49 @@ Example:
   ```sh
    ./vendor/bin/rector process --clear-cache
   ```
+- Finally, make sure to add the attribute strategies to your `config/scribe.php`:
+  ```diff
+    'strategies' => [
+        'metadata' => [
+            Strategies\Metadata\GetFromDocBlocks::class,
+  +         Strategies\Metadata\GetFromMetadataAttributes::class,
+        ],
+        'urlParameters' => [
+            Strategies\UrlParameters\GetFromLaravelAPI::class,
+            Strategies\UrlParameters\GetFromLumenAPI::class,
+            Strategies\UrlParameters\GetFromUrlParamTag::class,
+  +         Strategies\UrlParameters\GetFromUrlParamAttribute::class,
+        ],
+        'queryParameters' => [
+            Strategies\QueryParameters\GetFromFormRequest::class,
+            Strategies\QueryParameters\GetFromInlineValidator::class,
+            Strategies\QueryParameters\GetFromQueryParamTag::class,
+  +         Strategies\QueryParameters\GetFromQueryParamAttribute::class,
+        ],
+        'headers' => [
+            Strategies\Headers\GetFromRouteRules::class,
+            Strategies\Headers\GetFromHeaderTag::class,
+  +         Strategies\Headers\GetFromHeaderAttribute::class,
+        ],
+        'bodyParameters' => [
+            Strategies\BodyParameters\GetFromFormRequest::class,
+            Strategies\BodyParameters\GetFromInlineValidator::class,
+            Strategies\BodyParameters\GetFromBodyParamTag::class,
+  +         Strategies\BodyParameters\GetFromBodyParamAttribute::class,
+        ],
+        'responses' => [
+            Strategies\Responses\UseTransformerTags::class,
+            Strategies\Responses\UseResponseTag::class,
+            Strategies\Responses\UseResponseFileTag::class,
+            Strategies\Responses\UseApiResourceTags::class,
+  +         Strategies\Responses\UseResponseAttributes::class,
+            Strategies\Responses\ResponseCalls::class,
+        ],
+        'responseFields' => [
+            Strategies\ResponseFields\GetFromResponseFieldTag::class,
+  +         Strategies\ResponseFields\GetFromResponseFieldAttribute::class,
+        ],
+    ],
+  ```
 
 All done! You can delete the `rector.php` file and run `composer remove knuckleswtf/scribe-tags2attributes`.
