@@ -49,7 +49,7 @@ class ApiResourceTagParser
         $data['description'] = $description;
         $data['factoryStates'] = $factoryStates ?: null;
         $data['with'] = $relations ?: null;
-        $data['additionalData'] = $additionalData ?: null;
+        $data['additional'] = $additionalData ?: null;
         $data['paginate'] = $paginate;
         $data['simplePaginate'] = $simplePaginate;
         return $data;
