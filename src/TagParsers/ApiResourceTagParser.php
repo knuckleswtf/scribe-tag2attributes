@@ -1,6 +1,6 @@
 <?php
 
-namespace Knuckles\Scribe\Docblock2Attributes\TagParsers;
+namespace Knuckles\Scribe\Tags2Attributes\TagParsers;
 
 use Illuminate\Support\Arr;
 use Knuckles\Scribe\Extracting\ParamHelpers;
@@ -62,12 +62,12 @@ class ApiResourceTagParser
         $status = $result[1] ?: null;
         $content = $result[2];
 
-        ['attributes' => $attributes, 'content' => $content] = a::parseIntoContentAndAttributes($content, ['status', 'scenario']);
+        ['fields' => $fields, 'content' => $content] = a::parseIntoContentAndFields($content, ['status', 'scenario']);
 
-        $status = $attributes['status'] ?: $status;
+        $status = $fields['status'] ?: $status;
         $apiResourceClass = $content;
-        if (!empty($attributes['scenario'])) {
-            $description = (!empty($status) ? "$status, {$attributes['scenario']}" : $attributes['scenario']);
+        if (!empty($fields['scenario'])) {
+            $description = (!empty($status) ? "$status, {$fields['scenario']}" : $fields['scenario']);
         } else {
             $description = null;
         }
@@ -87,10 +87,10 @@ class ApiResourceTagParser
         $pagination = [];
 
         if ($modelTag) {
-            ['content' => $modelClass, 'attributes' => $attributes] = a::parseIntoContentAndAttributes($modelTag->value, ['states', 'with', 'paginate']);
-            $states = $attributes['states'] ? explode(',', $attributes['states']) : [];
-            $relations = $attributes['with'] ? explode(',', $attributes['with']) : [];
-            $pagination = $attributes['paginate'] ? explode(',', $attributes['paginate']) : [];
+            ['content' => $modelClass, 'fields' => $fields] = a::parseIntoContentAndFields($modelTag->value, ['states', 'with', 'paginate']);
+            $states = $fields['states'] ? explode(',', $fields['states']) : [];
+            $relations = $fields['with'] ? explode(',', $fields['with']) : [];
+            $pagination = $fields['paginate'] ? explode(',', $fields['paginate']) : [];
         }
 
         return [$modelClass, $states, $relations, $pagination];

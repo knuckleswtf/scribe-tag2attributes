@@ -1,6 +1,6 @@
 <?php
 
-namespace Knuckles\Scribe\Docblock2Attributes\TagParsers;
+namespace Knuckles\Scribe\Tags2Attributes\TagParsers;
 
 use Knuckles\Scribe\Extracting\ParamHelpers;
 use Knuckles\Scribe\Tools\AnnotationParser as a;
@@ -21,11 +21,11 @@ class ResponseTagParser
         $status = $result[1] ?: null;
         $content = $result[2] ?: '';
 
-        ['attributes' => $attributes, 'content' => $content] = a::parseIntoContentAndAttributes($content, ['status', 'scenario']);
+        ['fields' => $fields, 'content' => $content] = a::parseIntoContentAndFields($content, ['status', 'scenario']);
 
-        $status = $attributes['status'] ?: $status;
-        if (!empty($attributes['scenario'])) {
-            $description = (!empty($status) ? "$status, {$attributes['scenario']}" : $attributes['scenario']);
+        $status = $fields['status'] ?: $status;
+        if (!empty($fields['scenario'])) {
+            $description = (!empty($status) ? "$status, {$fields['scenario']}" : $fields['scenario']);
         } else {
             $description = null;
         }
