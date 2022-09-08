@@ -39,7 +39,7 @@ class ResponseFileTagParser
 
         return [
             $path,
-            'status' => (int) $status,
+            (int) $status,
             'merge' => $merge,
             'description' => $description,
         ];

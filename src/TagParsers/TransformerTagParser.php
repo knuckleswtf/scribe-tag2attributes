@@ -38,9 +38,9 @@ class TransformerTagParser
 
         if (!empty($statusCode)) {
             if ($model) {
-                $data[] = (int)$statusCode;
+                $data[] = (int) $statusCode;
             } else {
-                $data['status'] = (int)$statusCode;
+                $data['status'] = (int) $statusCode;
             }
         }
 

@@ -37,7 +37,6 @@ class ResponseFieldTagParser
         if (!empty($type) && !$this->isSupportedTypeInDocBlocks(explode('|', trim($type, '?'))[0])) {
             // Then that wasn't a type, but part of the description
             $data['description'] = trim("$type $description");
-            $data['type'] = null;
             return [$name,'description' => $data['description']];
         }
 
