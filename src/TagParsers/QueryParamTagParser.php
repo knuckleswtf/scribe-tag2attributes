@@ -1,6 +1,6 @@
 <?php
 
-namespace Knuckles\Scribe\Docblock2Attributes\TagParsers;
+namespace Knuckles\Scribe\Tags2Attributes\TagParsers;
 
 use Knuckles\Scribe\Extracting\ParamHelpers;
 
