@@ -16,6 +16,7 @@ use Knuckles\Scribe\Tags2Attributes\TagParsers\TransformerTagParser;
 use Knuckles\Scribe\Tags2Attributes\TagParsers\UrlParamTagParser;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
+use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Name\FullyQualified;
 use PHPStan\PhpDocParser\Ast\Node as DocNode;
 use PhpParser\Node\AttributeGroup;
@@ -241,6 +242,7 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
                 }
 
                 $attributeClass = $annotationToAttribute->getAttributeClass();
+
                 $items = $this->getArgs(
                     $tag, $docNode->value?->value, $phpDocInfo
                 );
@@ -249,6 +251,7 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
                 $args = $this->attributeArrayNameInliner->inlineArrayToArgs($args);
                 $attribute = new Attribute($fullyQualified, $args);
                 $attributeGroups[] = new AttributeGroup([$attribute]);
+
                 $phpDocInfo->markAsChanged();
                 return PhpDocNodeTraverser::NODE_REMOVE;
             }
@@ -273,6 +276,19 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
             return $arguments;
         };
 
+        $convertClassNamesToConst = function ($args) {
+            foreach ($args as $key => $value) {
+                if (is_string($value) && class_exists($value)) {
+                    $fullyQualified = new FullyQualified($value);
+                    $args[$key] = new ClassConstFetch($fullyQualified, 'class');
+                } else {
+                    $args[$key] = $value;
+                }
+            }
+
+            return $args;
+        };
+
         return match(strtolower($tag)) {
             'header' => explode(' ', $tagContent),
             'urlparam' => $parseAndRemoveEmptyKeys(UrlParamTagParser::class),
@@ -282,10 +298,10 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
 
             'response' => $parseAndRemoveEmptyKeys(ResponseTagParser::class),
             'responsefile' => $parseAndRemoveEmptyKeys(ResponseFileTagParser::class),
-            'apiresource' => $parseAndRemoveEmptyKeys(ApiResourceTagParser::class, $phpDocInfo->getPhpDocNode()->getTags()),
-            'apiresourcecollection' => $parseAndRemoveEmptyKeys(ApiResourceTagParser::class, $phpDocInfo->getPhpDocNode()->getTags(), true),
-            'transformer' => $parseAndRemoveEmptyKeys(TransformerTagParser::class, $phpDocInfo->getPhpDocNode()->getTags()),
-            'transformercollection' => $parseAndRemoveEmptyKeys(TransformerTagParser::class, $phpDocInfo->getPhpDocNode()->getTags(), true),
+            'apiresource' => $convertClassNamesToConst($parseAndRemoveEmptyKeys(ApiResourceTagParser::class, $phpDocInfo->getPhpDocNode()->getTags())),
+            'apiresourcecollection' => $convertClassNamesToConst($parseAndRemoveEmptyKeys(ApiResourceTagParser::class, $phpDocInfo->getPhpDocNode()->getTags(), true)),
+            'transformer' => $convertClassNamesToConst($parseAndRemoveEmptyKeys(TransformerTagParser::class, $phpDocInfo->getPhpDocNode()->getTags())),
+            'transformercollection' => $convertClassNamesToConst($parseAndRemoveEmptyKeys(TransformerTagParser::class, $phpDocInfo->getPhpDocNode()->getTags(), true)),
 
             'subgroup' => $parseAndRemoveEmptyKeys(SubgroupTagParser::class, $phpDocInfo->getPhpDocNode()->getTags()),
         };
