@@ -3,19 +3,16 @@
 
 This package provides a [Rector](https://github.com/rectorphp/rector) rule to automatically convert most Scribe v3 docblock tags to v4 PHP 8 attributes.
 
-This package will smartly transform the following tags to their attribute equivalents:
+This package **will** smartly transform the following tags on controller methods to their attribute equivalents:
 
-- `header`
-- `urlParam`, `queryParam`, and `bodyParam`
-- `responseField`
-- `response`
-- `responseFile`
+- `header`, `urlParam`, `queryParam`, and `bodyParam`
+- `responseField`, `response` and `responseFile`
 - `apiResource`,`apiResourceCollection`, and `apiResourceModel`
 - `transformer`, `transformerCollection`, and `transformerModel`
 - `subgroup`
 - `authenticated` and `unauthenticated`
 
-It won't transform `@group` tags or endpoint titles and descriptions (because they can look ugly as attributes).
+It **won't** transform `@group` tags or endpoint titles and descriptions (because they can look ugly as attributes).
 
 It will only work on methods in classes. Unfortunately, attributes can't be added to inline (closure) routes in a neat way.
 
@@ -39,24 +36,24 @@ Example:
 + #[Subgroup('Getting started', 'Get started doing stuff')]
 + #[Header('Test', 'Value')]
 + #[Response(status: 204, description: '204, Nothing to see here')]
-+ #[ResponseFromApiResource('App\Http\Resources\UserResource', 'App\Models\User', collection: true, factoryStates: ['admin'], with: ['sideProjects', 'friends'], simplePaginate: 12)]
++ #[ResponseFromApiResource(UserResource::class, User::class, collection: true, factoryStates: ['admin'], with: ['sideProjects', 'friends'], simplePaginate: 12)]
 + #[ResponseFromFile('responses/not_found.json', status: 404, merge: '{"resource": "user"}', description: '404, User not found')]
   public function doSomething()
 ```
 
 ## Usage
-- Make sure the minimum PHP version in your `composer.json` is 8.0 (ie you should have `"php": ">= 8.0"` or similar in your `"require"` section).
+- Make sure the minimum PHP version in your `composer.json` is 8 (ie you should have `"php": ">= 8.0"` or similar in your `"require"` section).
 - Install this package
   ```sh
   composer require knuckleswtf/scribe-tags2attributes --dev
   ```
 
-- Create a `rector.php` file in the root of your project
+- Run the Rector `init` command to create a `rector.php` file in the root of your project
   ```sh
   ./vendor/bin/rector init
   ```
 
-- Put this in the generated `rector.php` (delete whatever's in it):
+- Put this in the generated `rector.php` (delete whatever's in the file):
   ```php
   <?php
 
@@ -68,20 +65,20 @@ Example:
       __DIR__ . '/app/Http/Controllers', // <- replace this with wherever your controllers are
     ]);
     $rectorConfig->importNames();
-    $rectorConfig->rule(Knuckles\Scribe\Docblock2Attributes\RectorRule::class);
+    $rectorConfig->rule(\Knuckles\Scribe\Tags2Attributes\RectorRule::class);
   };
   ```
 
 - Do a dry run. This will tell Rector to print out the changes that will be made, without actually making them. That way you can inspect and verify that it looks okay. We also recommend doing a `git commit`.
   ```sh
-   ./vendor/bin/rector process --dry-run --clear-cache
+  ./vendor/bin/rector process --dry-run --clear-cache
   ```
 
 - When you're ready, run the command.
   ```sh
-   ./vendor/bin/rector process --clear-cache
+  ./vendor/bin/rector process --clear-cache
   ```
-- Finally, make sure to add the attribute strategies to your `config/scribe.php`:
+- Make sure to add the attribute strategies to your `config/scribe.php`:
   ```diff
     'strategies' => [
         'metadata' => [
