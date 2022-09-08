@@ -1,20 +1,22 @@
 <?php
 
-namespace Knuckles\Scribe\Docblock2Attributes;
+namespace Knuckles\Scribe\Tags2Attributes;
 
 
-use Knuckles\Scribe\Docblock2Attributes\TagParsers\ApiResourceTagParser;
-use Knuckles\Scribe\Docblock2Attributes\TagParsers\AuthTagParser;
-use Knuckles\Scribe\Docblock2Attributes\TagParsers\BodyParamTagParser;
-use Knuckles\Scribe\Docblock2Attributes\TagParsers\GroupTagParser;
-use Knuckles\Scribe\Docblock2Attributes\TagParsers\QueryParamTagParser;
-use Knuckles\Scribe\Docblock2Attributes\TagParsers\ResponseFieldTagParser;
-use Knuckles\Scribe\Docblock2Attributes\TagParsers\ResponseFileTagParser;
-use Knuckles\Scribe\Docblock2Attributes\TagParsers\ResponseTagParser;
-use Knuckles\Scribe\Docblock2Attributes\TagParsers\SubgroupTagParser;
-use Knuckles\Scribe\Docblock2Attributes\TagParsers\TransformerTagParser;
-use Knuckles\Scribe\Docblock2Attributes\TagParsers\UrlParamTagParser;
+use Knuckles\Scribe\Tags2Attributes\TagParsers\ApiResourceTagParser;
+use Knuckles\Scribe\Tags2Attributes\TagParsers\AuthTagParser;
+use Knuckles\Scribe\Tags2Attributes\TagParsers\BodyParamTagParser;
+use Knuckles\Scribe\Tags2Attributes\TagParsers\GroupTagParser;
+use Knuckles\Scribe\Tags2Attributes\TagParsers\QueryParamTagParser;
+use Knuckles\Scribe\Tags2Attributes\TagParsers\ResponseFieldTagParser;
+use Knuckles\Scribe\Tags2Attributes\TagParsers\ResponseFileTagParser;
+use Knuckles\Scribe\Tags2Attributes\TagParsers\ResponseTagParser;
+use Knuckles\Scribe\Tags2Attributes\TagParsers\SubgroupTagParser;
+use Knuckles\Scribe\Tags2Attributes\TagParsers\TransformerTagParser;
+use Knuckles\Scribe\Tags2Attributes\TagParsers\UrlParamTagParser;
 use PhpParser\Node;
+use PhpParser\Node\Attribute;
+use PhpParser\Node\Name\FullyQualified;
 use PHPStan\PhpDocParser\Ast\Node as DocNode;
 use PhpParser\Node\AttributeGroup;
 use PhpParser\Node\Expr\ArrowFunction;
@@ -34,6 +36,7 @@ use Rector\Php80\NodeFactory\AttrGroupsFactory;
 use Rector\Php80\NodeManipulator\AttributeGroupNamedArgumentManipulator;
 use Rector\Php80\PhpDoc\PhpDocNodeFinder;
 use Rector\Php80\ValueObject\AnnotationToAttribute;
+use Rector\PhpAttribute\AttributeArrayNameInliner;
 use Rector\PhpAttribute\NodeFactory\PhpAttributeGroupFactory;
 use Rector\PhpAttribute\RemovableAnnotationAnalyzer;
 use Rector\PhpAttribute\UnwrapableAnnotationAnalyzer;
@@ -51,6 +54,10 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
  */
 class RectorRule extends AbstractRector implements MinPhpVersionInterface
 {
+    /**
+     * @var \Rector\PhpAttribute\AttributeArrayNameInliner
+     */
+    protected AttributeArrayNameInliner $attributeArrayNameInliner;
     private $annotationsToAttributes = [];
     /**
      * @readonly
@@ -97,7 +104,12 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
      * @var \Rector\Naming\Naming\UseImportsResolver
      */
     private $useImportsResolver;
-    public function __construct(PhpAttributeGroupFactory $phpAttributeGroupFactory, AttrGroupsFactory $attrGroupsFactory, PhpDocTagRemover $phpDocTagRemover, PhpDocNodeFinder $phpDocNodeFinder, UnwrapableAnnotationAnalyzer $unwrapableAnnotationAnalyzer, RemovableAnnotationAnalyzer $removableAnnotationAnalyzer, AttributeGroupNamedArgumentManipulator $attributeGroupNamedArgumentManipulator, PhpVersionProvider $phpVersionProvider, UseImportsResolver $useImportsResolver)
+    public function __construct(
+        PhpAttributeGroupFactory $phpAttributeGroupFactory, AttrGroupsFactory $attrGroupsFactory,
+        PhpDocTagRemover $phpDocTagRemover, PhpDocNodeFinder $phpDocNodeFinder,
+        UnwrapableAnnotationAnalyzer $unwrapableAnnotationAnalyzer, RemovableAnnotationAnalyzer $removableAnnotationAnalyzer,
+        AttributeGroupNamedArgumentManipulator $attributeGroupNamedArgumentManipulator, PhpVersionProvider $phpVersionProvider,
+        UseImportsResolver $useImportsResolver, AttributeArrayNameInliner $attributeArrayNameInliner)
     {
         $this->phpAttributeGroupFactory = $phpAttributeGroupFactory;
         $this->attrGroupsFactory = $attrGroupsFactory;
@@ -108,6 +120,7 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
         $this->attributeGroupNamedArgumentManipulator = $attributeGroupNamedArgumentManipulator;
         $this->phpVersionProvider = $phpVersionProvider;
         $this->useImportsResolver = $useImportsResolver;
+        $this->attributeArrayNameInliner = $attributeArrayNameInliner;
 
         $configuration = [
             new AnnotationToAttribute('header', \Knuckles\Scribe\Attributes\Header::class),
@@ -226,12 +239,16 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
                 if (in_array(strtolower($tag), $removals)) {
                     return PhpDocNodeTraverser::NODE_REMOVE;
                 }
-                $attributeGroups[] = $this->phpAttributeGroupFactory->createFromClassWithItems(
-                    $annotationToAttribute->getAttributeClass(),
-                    $this->getArgs(
-                        $tag, $docNode->value?->value, $phpDocInfo
-                    )
+
+                $attributeClass = $annotationToAttribute->getAttributeClass();
+                $items = $this->getArgs(
+                    $tag, $docNode->value?->value, $phpDocInfo
                 );
+                $fullyQualified = new FullyQualified($attributeClass);
+                $args = $this->phpAttributeGroupFactory->createArgsFromItems($items, $attributeClass);
+                $args = $this->attributeArrayNameInliner->inlineArrayToArgs($args);
+                $attribute = new Attribute($fullyQualified, $args);
+                $attributeGroups[] = new AttributeGroup([$attribute]);
                 $phpDocInfo->markAsChanged();
                 return PhpDocNodeTraverser::NODE_REMOVE;
             }
