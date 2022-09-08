@@ -261,7 +261,7 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
     {
         $tagContent = trim($tagContent);
 
-        $removeEmptyKeys = function ($class, ...$extraData) use ($tagContent) {
+        $parseAndRemoveEmptyKeys = function ($class, ...$extraData) use ($tagContent) {
             $parsed = (new $class($tagContent, ...$extraData))->parse();
             $arguments = [];
             foreach ($parsed as $key => $value) {
@@ -275,19 +275,19 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
 
         return match(strtolower($tag)) {
             'header' => explode(' ', $tagContent),
-            'urlparam' => $removeEmptyKeys(UrlParamTagParser::class),
-            'queryparam' => $removeEmptyKeys(QueryParamTagParser::class),
-            'bodyparam' => $removeEmptyKeys(BodyParamTagParser::class),
-            'responsefield' => $removeEmptyKeys(ResponseFieldTagParser::class),
+            'urlparam' => $parseAndRemoveEmptyKeys(UrlParamTagParser::class),
+            'queryparam' => $parseAndRemoveEmptyKeys(QueryParamTagParser::class),
+            'bodyparam' => $parseAndRemoveEmptyKeys(BodyParamTagParser::class),
+            'responsefield' => $parseAndRemoveEmptyKeys(ResponseFieldTagParser::class),
 
-            'response' => $removeEmptyKeys(ResponseTagParser::class),
-            'responsefile' => $removeEmptyKeys(ResponseFileTagParser::class),
-            'apiresource' => $removeEmptyKeys(ApiResourceTagParser::class, $phpDocInfo->getPhpDocNode()->getTags()),
-            'apiresourcecollection' => $removeEmptyKeys(ApiResourceTagParser::class, $phpDocInfo->getPhpDocNode()->getTags(), true),
-            'transformer' => $removeEmptyKeys(TransformerTagParser::class, $phpDocInfo->getPhpDocNode()->getTags()),
-            'transformercollection' => $removeEmptyKeys(TransformerTagParser::class, $phpDocInfo->getPhpDocNode()->getTags(), true),
+            'response' => $parseAndRemoveEmptyKeys(ResponseTagParser::class),
+            'responsefile' => $parseAndRemoveEmptyKeys(ResponseFileTagParser::class),
+            'apiresource' => $parseAndRemoveEmptyKeys(ApiResourceTagParser::class, $phpDocInfo->getPhpDocNode()->getTags()),
+            'apiresourcecollection' => $parseAndRemoveEmptyKeys(ApiResourceTagParser::class, $phpDocInfo->getPhpDocNode()->getTags(), true),
+            'transformer' => $parseAndRemoveEmptyKeys(TransformerTagParser::class, $phpDocInfo->getPhpDocNode()->getTags()),
+            'transformercollection' => $parseAndRemoveEmptyKeys(TransformerTagParser::class, $phpDocInfo->getPhpDocNode()->getTags(), true),
 
-            'subgroup' => $removeEmptyKeys(SubgroupTagParser::class, $phpDocInfo->getPhpDocNode()->getTags()),
+            'subgroup' => $parseAndRemoveEmptyKeys(SubgroupTagParser::class, $phpDocInfo->getPhpDocNode()->getTags()),
         };
     }
 }

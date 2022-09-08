@@ -30,11 +30,18 @@ class TransformerTagParser
 
         $data = [
             $transformerClass,
-            $model
         ];
 
+        if (!empty($model)) {
+            $data[] = $model;
+        }
+
         if (!empty($statusCode)) {
-            $data[] = (int) $statusCode;
+            if ($model) {
+                $data[] = (int)$statusCode;
+            } else {
+                $data['status'] = (int)$statusCode;
+            }
         }
 
         if ($this->isCollection) {
@@ -74,11 +81,6 @@ class TransformerTagParser
             $states = $fields['states'] ? explode(',', $fields['states']) : [];
             $relations = $fields['with'] ? explode(',', $fields['with']) : [];
             $resourceKey = $fields['resourceKey'] ?? null;
-        } else {
-            $parameter = Arr::first($transformerMethod->getParameters());
-            if ($parameter->hasType() && !$parameter->getType()->isBuiltin() && class_exists($parameter->getType()->getName())) {
-                $type = $parameter->getType()->getName();
-            }
         }
 
         return [$type, $states, $relations, $resourceKey];
