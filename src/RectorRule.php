@@ -20,11 +20,8 @@ use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Name\FullyQualified;
 use PHPStan\PhpDocParser\Ast\Node as DocNode;
 use PhpParser\Node\AttributeGroup;
-use PhpParser\Node\Expr\ArrowFunction;
-use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassMethod;
-use PhpParser\Node\Stmt\Function_;
 use PHPStan\PhpDocParser\Ast\PhpDoc\GenericTagValueNode;
 use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagNode;
 use Rector\BetterPhpDocParser\PhpDocInfo\PhpDocInfo;
@@ -43,11 +40,11 @@ use Rector\PhpAttribute\RemovableAnnotationAnalyzer;
 use Rector\PhpAttribute\UnwrapableAnnotationAnalyzer;
 use Rector\VersionBonding\Contract\MinPhpVersionInterface;
 use RectorPrefix202208\Symplify\Astral\PhpDocParser\PhpDocNodeTraverser;
-use Symplify\RuleDocGenerator\ValueObject\CodeSample\ConfiguredCodeSample;
 use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
 
 /**
- * Most of the code here is copied from Rector's AnnotationToAttributeRector, because it's a final class.
+ * Most of the code here is copied from Rector's AnnotationToAttributeRector (Rector 0.14.0),
+ * because it's a final class (can't be extended).
  * The changes:
  * - the `getArgs()` method and its usages
  * - creates its own config in the constructor
@@ -55,74 +52,21 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
  */
 class RectorRule extends AbstractRector implements MinPhpVersionInterface
 {
-    /**
-     * @var \Rector\PhpAttribute\AttributeArrayNameInliner
-     */
-    protected AttributeArrayNameInliner $attributeArrayNameInliner;
-    private $annotationsToAttributes = [];
-    /**
-     * @readonly
-     * @var \Rector\PhpAttribute\NodeFactory\PhpAttributeGroupFactory
-     */
-    private $phpAttributeGroupFactory;
-    /**
-     * @readonly
-     * @var \Rector\Php80\NodeFactory\AttrGroupsFactory
-     */
-    private $attrGroupsFactory;
-    /**
-     * @readonly
-     * @var \Rector\BetterPhpDocParser\PhpDocManipulator\PhpDocTagRemover
-     */
-    private $phpDocTagRemover;
-    /**
-     * @readonly
-     * @var \Rector\Php80\PhpDoc\PhpDocNodeFinder
-     */
-    private $phpDocNodeFinder;
-    /**
-     * @readonly
-     * @var \Rector\PhpAttribute\UnwrapableAnnotationAnalyzer
-     */
-    private $unwrapableAnnotationAnalyzer;
-    /**
-     * @readonly
-     * @var \Rector\PhpAttribute\RemovableAnnotationAnalyzer
-     */
-    private $removableAnnotationAnalyzer;
-    /**
-     * @readonly
-     * @var \Rector\Php80\NodeManipulator\AttributeGroupNamedArgumentManipulator
-     */
-    private $attributeGroupNamedArgumentManipulator;
-    /**
-     * @readonly
-     * @var \Rector\Core\Php\PhpVersionProvider
-     */
-    private $phpVersionProvider;
-    /**
-     * @readonly
-     * @var \Rector\Naming\Naming\UseImportsResolver
-     */
-    private $useImportsResolver;
-    public function __construct(
-        PhpAttributeGroupFactory $phpAttributeGroupFactory, AttrGroupsFactory $attrGroupsFactory,
-        PhpDocTagRemover $phpDocTagRemover, PhpDocNodeFinder $phpDocNodeFinder,
-        UnwrapableAnnotationAnalyzer $unwrapableAnnotationAnalyzer, RemovableAnnotationAnalyzer $removableAnnotationAnalyzer,
-        AttributeGroupNamedArgumentManipulator $attributeGroupNamedArgumentManipulator, PhpVersionProvider $phpVersionProvider,
-        UseImportsResolver $useImportsResolver, AttributeArrayNameInliner $attributeArrayNameInliner)
-    {
-        $this->phpAttributeGroupFactory = $phpAttributeGroupFactory;
-        $this->attrGroupsFactory = $attrGroupsFactory;
-        $this->phpDocTagRemover = $phpDocTagRemover;
-        $this->phpDocNodeFinder = $phpDocNodeFinder;
-        $this->unwrapableAnnotationAnalyzer = $unwrapableAnnotationAnalyzer;
-        $this->removableAnnotationAnalyzer = $removableAnnotationAnalyzer;
-        $this->attributeGroupNamedArgumentManipulator = $attributeGroupNamedArgumentManipulator;
-        $this->phpVersionProvider = $phpVersionProvider;
-        $this->useImportsResolver = $useImportsResolver;
-        $this->attributeArrayNameInliner = $attributeArrayNameInliner;
+    protected array $annotationsToAttributes = [];
 
+    public function __construct(
+        protected PhpAttributeGroupFactory $phpAttributeGroupFactory,
+        protected AttrGroupsFactory $attrGroupsFactory,
+        protected PhpDocTagRemover $phpDocTagRemover,
+        protected PhpDocNodeFinder $phpDocNodeFinder,
+        protected UnwrapableAnnotationAnalyzer $unwrapableAnnotationAnalyzer,
+        protected RemovableAnnotationAnalyzer $removableAnnotationAnalyzer,
+        protected AttributeGroupNamedArgumentManipulator $attributeGroupNamedArgumentManipulator,
+        protected PhpVersionProvider $phpVersionProvider,
+        protected UseImportsResolver $useImportsResolver,
+        protected AttributeArrayNameInliner $attributeArrayNameInliner
+    )
+    {
         $configuration = [
             new AnnotationToAttribute('header', \Knuckles\Scribe\Attributes\Header::class),
             new AnnotationToAttribute('urlParam', \Knuckles\Scribe\Attributes\UrlParam::class),
@@ -165,25 +109,25 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
         $this->removableAnnotationAnalyzer->configure($configuration);
     }
 
-    public function getRuleDefinition() : RuleDefinition
+    public function getRuleDefinition(): RuleDefinition
     {
         return new RuleDefinition('Convert Scribe docblock tags to attributes', ['']);
     }
 
-    public function getNodeTypes() : array
+    public function getNodeTypes(): array
     {
         return [
-            Class_::class, ClassMethod::class, Function_::class, Closure::class, ArrowFunction::class
+            Class_::class, ClassMethod::class,
         ];
     }
 
-    public function refactor(Node $node) : ?Node
+    public function refactor(Node $node): ?Node
     {
         $phpDocInfo = $this->phpDocInfoFactory->createFromNode($node);
         if (!$phpDocInfo instanceof PhpDocInfo) {
             return null;
         }
-        $attributeGroups = $this->processGenericTags($phpDocInfo);
+        $attributeGroups = $this->processTags($phpDocInfo);
         if ($attributeGroups === []) {
             return null;
         }
@@ -192,20 +136,21 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
         return $node;
     }
 
-    public function provideMinPhpVersion() : int
+    public function provideMinPhpVersion(): int
     {
         return PhpVersionFeature::ATTRIBUTES;
     }
 
-    private function processGenericTags(PhpDocInfo $phpDocInfo) : array
+    private function processTags(PhpDocInfo $phpDocInfo): array
     {
         $attributeGroups = [];
         $phpDocNodeTraverser = new PhpDocNodeTraverser();
-        $phpDocNodeTraverser->traverseWithCallable($phpDocInfo->getPhpDocNode(), '', function (DocNode $docNode) use(&$attributeGroups, $phpDocInfo) : ?int {
+        $phpDocNodeTraverser->traverseWithCallable($phpDocInfo->getPhpDocNode(), '', function (DocNode $docNode) use (&$attributeGroups, $phpDocInfo): ?int {
             if (!$docNode instanceof PhpDocTagNode) {
                 return null;
             }
 
+            // Replace auth tags
             if (in_array($docNode->name, ['@authenticated', '@unauthenticated'])) {
                 $attributeGroups[] = $this->phpAttributeGroupFactory->createFromClassWithItems(
                     $docNode->name == '@authenticated'
@@ -220,10 +165,6 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
                 return null;
             }
             $tag = \trim($docNode->name, '@');
-            // not a basic one
-            if (\strpos($tag, '\\') !== \false) {
-                return null;
-            }
             // Handled by other tags, so just remove
             $removals = [
                 'apiresourcemodel',
@@ -264,10 +205,11 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
     {
         $tagContent = trim($tagContent);
 
-        $parseAndRemoveEmptyKeys = function ($class, ...$extraData) use ($tagContent) {
+        $parse = function ($class, ...$extraData) use ($tagContent) {
             $parsed = (new $class($tagContent, ...$extraData))->parse();
             $arguments = [];
             foreach ($parsed as $key => $value) {
+                // Remove empty keys
                 if ($value !== null && $value !== '') {
                     $arguments[$key] = $value;
                 }
@@ -276,34 +218,37 @@ class RectorRule extends AbstractRector implements MinPhpVersionInterface
             return $arguments;
         };
 
-        $convertClassNamesToConst = function ($args) {
-            foreach ($args as $key => $value) {
-                if (is_string($value) && class_exists($value)) {
-                    $fullyQualified = new FullyQualified($value);
-                    $args[$key] = new ClassConstFetch($fullyQualified, 'class');
-                } else {
-                    $args[$key] = $value;
-                }
-            }
+        $convertClassNamesToConst = fn(...$args) => self::convertClassNamesToConst(...$args);
 
-            return $args;
-        };
-
-        return match(strtolower($tag)) {
+        return match (strtolower($tag)) {
             'header' => explode(' ', $tagContent),
-            'urlparam' => $parseAndRemoveEmptyKeys(UrlParamTagParser::class),
-            'queryparam' => $parseAndRemoveEmptyKeys(QueryParamTagParser::class),
-            'bodyparam' => $parseAndRemoveEmptyKeys(BodyParamTagParser::class),
-            'responsefield' => $parseAndRemoveEmptyKeys(ResponseFieldTagParser::class),
+            'urlparam' => $parse(UrlParamTagParser::class),
+            'queryparam' => $parse(QueryParamTagParser::class),
+            'bodyparam' => $parse(BodyParamTagParser::class),
+            'responsefield' => $parse(ResponseFieldTagParser::class),
 
-            'response' => $parseAndRemoveEmptyKeys(ResponseTagParser::class),
-            'responsefile' => $parseAndRemoveEmptyKeys(ResponseFileTagParser::class),
-            'apiresource' => $convertClassNamesToConst($parseAndRemoveEmptyKeys(ApiResourceTagParser::class, $phpDocInfo->getPhpDocNode()->getTags())),
-            'apiresourcecollection' => $convertClassNamesToConst($parseAndRemoveEmptyKeys(ApiResourceTagParser::class, $phpDocInfo->getPhpDocNode()->getTags(), true)),
-            'transformer' => $convertClassNamesToConst($parseAndRemoveEmptyKeys(TransformerTagParser::class, $phpDocInfo->getPhpDocNode()->getTags())),
-            'transformercollection' => $convertClassNamesToConst($parseAndRemoveEmptyKeys(TransformerTagParser::class, $phpDocInfo->getPhpDocNode()->getTags(), true)),
+            'response' => $parse(ResponseTagParser::class),
+            'responsefile' => $parse(ResponseFileTagParser::class),
+            'apiresource' => $convertClassNamesToConst($parse(ApiResourceTagParser::class, $phpDocInfo->getPhpDocNode()->getTags())),
+            'apiresourcecollection' => $convertClassNamesToConst($parse(ApiResourceTagParser::class, $phpDocInfo->getPhpDocNode()->getTags(), true)),
+            'transformer' => $convertClassNamesToConst($parse(TransformerTagParser::class, $phpDocInfo->getPhpDocNode()->getTags())),
+            'transformercollection' => $convertClassNamesToConst($parse(TransformerTagParser::class, $phpDocInfo->getPhpDocNode()->getTags(), true)),
 
-            'subgroup' => $parseAndRemoveEmptyKeys(SubgroupTagParser::class, $phpDocInfo->getPhpDocNode()->getTags()),
+            'subgroup' => $parse(SubgroupTagParser::class, $phpDocInfo->getPhpDocNode()->getTags()),
         };
+    }
+
+    protected static function convertClassNamesToConst(array $args)
+    {
+        foreach ($args as $key => $value) {
+            if (is_string($value) && class_exists($value)) {
+                $fullyQualified = new FullyQualified($value);
+                $args[$key] = new ClassConstFetch($fullyQualified, 'class');
+            } else {
+                $args[$key] = $value;
+            }
+        }
+
+        return $args;
     }
 }
